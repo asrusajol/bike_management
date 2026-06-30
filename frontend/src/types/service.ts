@@ -1,34 +1,28 @@
-export type ServiceType =
-  | 'oil_change'
-  | 'tire'
-  | 'brake'
-  | 'chain'
-  | 'filter'
-  | 'battery'
-  | 'spark_plug'
-  | 'coolant'
-  | 'general'
-  | 'other';
+export const PREDEFINED_SERVICE_TYPES: string[] = [
+  'Engine Oil',
+  'Brake Pad',
+  'Air Filter',
+  'Oil Filter',
+  'Chain',
+  'Tire',
+  'Battery',
+  'Spark Plug',
+  'Coolant',
+  'General Service',
+  'Other',
+];
 
-export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
-  oil_change: 'Oil Change',
-  tire: 'Tire',
-  brake: 'Brake',
-  chain: 'Chain',
-  filter: 'Filter',
-  battery: 'Battery',
-  spark_plug: 'Spark Plug',
-  coolant: 'Coolant',
-  general: 'General Service',
-  other: 'Other',
-};
+export interface ServiceItem {
+  name: string;
+  cost: number;
+}
 
 export interface ServiceLog {
   id: string;
   bike_id: string;
-  date: string;
+  logged_at: string;
   odometer_reading?: number;
-  service_type: ServiceType;
+  service_items: ServiceItem[];
   cost: number;
   workshop_name?: string;
   next_service_km?: number;
@@ -38,10 +32,9 @@ export interface ServiceLog {
 }
 
 export interface ServiceLogCreate {
-  date: string;
+  logged_at: string;
   odometer_reading?: number;
-  service_type: ServiceType;
-  cost: number;
+  service_items: ServiceItem[];
   workshop_name?: string;
   next_service_km?: number;
   next_service_date?: string;

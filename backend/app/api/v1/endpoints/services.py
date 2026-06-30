@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
@@ -11,11 +12,15 @@ from app.services.bike_service import get_bike_for_user
 router = APIRouter()
 
 
+def _total(items: list) -> float:
+    return round(sum(i.cost for i in items), 2)
+
+
 @router.get("/", response_model=list[ServiceLogResponse])
 async def list_service_logs(bike_id: UUID, current_user: CurrentUser, db: DBSession):
     await get_bike_for_user(db, bike_id, current_user.id)
     result = await db.execute(
-        select(ServiceLog).where(ServiceLog.bike_id == bike_id).order_by(ServiceLog.date.desc())
+        select(ServiceLog).where(ServiceLog.bike_id == bike_id).order_by(ServiceLog.logged_at.desc())
     )
     return result.scalars().all()
 
@@ -25,7 +30,15 @@ async def create_service_log(
     bike_id: UUID, data: ServiceLogCreate, current_user: CurrentUser, db: DBSession
 ):
     await get_bike_for_user(db, bike_id, current_user.id)
-    log = ServiceLog(**data.model_dump(), bike_id=bike_id)
+
+    if data.logged_at > datetime.now():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Service datetime cannot be in the future.",
+        )
+
+    payload = data.model_dump()
+    log = ServiceLog(**payload, cost=_total(data.service_items), bike_id=bike_id)
     db.add(log)
     await db.commit()
     await db.refresh(log)
@@ -55,7 +68,19 @@ async def update_service_log(
     log = result.scalar_one_or_none()
     if not log:
         raise HTTPException(status_code=404, detail="Service log not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
+
+    update_data = data.model_dump(exclude_unset=True)
+
+    if "logged_at" in update_data and update_data["logged_at"] > datetime.now():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Service datetime cannot be in the future.",
+        )
+
+    if "service_items" in update_data:
+        update_data["cost"] = round(sum(i["cost"] for i in update_data["service_items"]), 2)
+
+    for field, value in update_data.items():
         setattr(log, field, value)
     await db.commit()
     await db.refresh(log)

@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.core.database import Base
 import app.models  # noqa: F401 — registers all models with Base.metadata
 
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.ASYNC_DATABASE_URL)
 
 target_metadata = Base.metadata
 

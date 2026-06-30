@@ -19,15 +19,15 @@ interface Props {
 
 export default function StatCard({ label, value, icon: Icon, color = 'blue', sub }: Props) {
   return (
-    <div className="bg-white rounded-xl border p-5 flex items-start gap-4">
-      <div className={cn('rounded-lg p-2.5 shrink-0', colors[color])}>
-        <Icon className="w-5 h-5" />
+    <div className="bg-white rounded-xl border p-4 flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500 font-medium leading-tight">{label}</p>
+        <div className={cn('rounded-lg p-2 shrink-0', colors[color])}>
+          <Icon className="w-4 h-4" />
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="text-xl font-bold mt-0.5 truncate">{value}</p>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-      </div>
+      <p className="text-xl font-bold leading-tight break-all">{value}</p>
+      {sub && <p className="text-xs text-gray-400">{sub}</p>}
     </div>
   );
 }

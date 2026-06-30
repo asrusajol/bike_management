@@ -12,6 +12,9 @@ class BikeCreate(BaseModel):
     make: Optional[str] = None
     model: Optional[str] = None
     year: Optional[int] = None
+    cc: Optional[int] = None
+    colour: Optional[str] = None
+    tank_capacity: Optional[float] = None
     odometer_unit: OdometerUnit = OdometerUnit.KM
     purchase_date: Optional[date] = None
     purchase_price: Optional[float] = None
@@ -24,6 +27,9 @@ class BikeUpdate(BaseModel):
     make: Optional[str] = None
     model: Optional[str] = None
     year: Optional[int] = None
+    cc: Optional[int] = None
+    colour: Optional[str] = None
+    tank_capacity: Optional[float] = None
     odometer_unit: Optional[OdometerUnit] = None
     purchase_date: Optional[date] = None
     purchase_price: Optional[float] = None
@@ -40,6 +46,9 @@ class BikeResponse(BaseModel):
     make: Optional[str]
     model: Optional[str]
     year: Optional[int]
+    cc: Optional[int]
+    colour: Optional[str]
+    tank_capacity: Optional[float]
     odometer_unit: OdometerUnit
     purchase_date: Optional[date]
     purchase_price: Optional[float]

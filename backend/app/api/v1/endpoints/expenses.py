@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
@@ -15,7 +16,7 @@ router = APIRouter()
 async def list_expenses(bike_id: UUID, current_user: CurrentUser, db: DBSession):
     await get_bike_for_user(db, bike_id, current_user.id)
     result = await db.execute(
-        select(Expense).where(Expense.bike_id == bike_id).order_by(Expense.date.desc())
+        select(Expense).where(Expense.bike_id == bike_id).order_by(Expense.logged_at.desc())
     )
     return result.scalars().all()
 
@@ -23,6 +24,13 @@ async def list_expenses(bike_id: UUID, current_user: CurrentUser, db: DBSession)
 @router.post("/", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
 async def create_expense(bike_id: UUID, data: ExpenseCreate, current_user: CurrentUser, db: DBSession):
     await get_bike_for_user(db, bike_id, current_user.id)
+
+    if data.logged_at > datetime.now():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Expense datetime cannot be in the future.",
+        )
+
     expense = Expense(**data.model_dump(), bike_id=bike_id)
     db.add(expense)
     await db.commit()
@@ -53,7 +61,16 @@ async def update_expense(
     expense = result.scalar_one_or_none()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
+
+    update_data = data.model_dump(exclude_unset=True)
+
+    if "logged_at" in update_data and update_data["logged_at"] > datetime.now():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Expense datetime cannot be in the future.",
+        )
+
+    for field, value in update_data.items():
         setattr(expense, field, value)
     await db.commit()
     await db.refresh(expense)

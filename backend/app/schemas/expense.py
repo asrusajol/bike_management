@@ -1,5 +1,5 @@
 from uuid import UUID
-from datetime import date, datetime
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -8,7 +8,7 @@ from app.models.enums import ExpenseCategory
 
 
 class ExpenseCreate(BaseModel):
-    date: date
+    logged_at: datetime
     category: ExpenseCategory
     cost: float
     description: Optional[str] = None
@@ -16,7 +16,7 @@ class ExpenseCreate(BaseModel):
 
 
 class ExpenseUpdate(BaseModel):
-    date: Optional[date] = None
+    logged_at: Optional[datetime] = None
     category: Optional[ExpenseCategory] = None
     cost: Optional[float] = None
     description: Optional[str] = None
@@ -28,7 +28,7 @@ class ExpenseResponse(BaseModel):
 
     id: UUID
     bike_id: UUID
-    date: date
+    logged_at: datetime
     category: ExpenseCategory
     cost: float
     description: Optional[str]

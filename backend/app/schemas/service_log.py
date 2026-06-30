@@ -2,27 +2,36 @@ from uuid import UUID
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
-from app.models.enums import ServiceType
+
+class ServiceItem(BaseModel):
+    name: str
+    cost: float
 
 
 class ServiceLogCreate(BaseModel):
-    date: date
+    logged_at: datetime
     odometer_reading: Optional[float] = None
-    service_type: ServiceType
-    cost: float
+    service_items: list[ServiceItem]
     workshop_name: Optional[str] = None
     next_service_km: Optional[float] = None
     next_service_date: Optional[date] = None
     notes: Optional[str] = None
 
+    @model_validator(mode="after")
+    def validate_items(self):
+        cleaned = [i for i in self.service_items if i.name.strip()]
+        if not cleaned:
+            raise ValueError("At least one service item is required")
+        self.service_items = cleaned
+        return self
+
 
 class ServiceLogUpdate(BaseModel):
-    date: Optional[date] = None
+    logged_at: Optional[datetime] = None
     odometer_reading: Optional[float] = None
-    service_type: Optional[ServiceType] = None
-    cost: Optional[float] = None
+    service_items: Optional[list[ServiceItem]] = None
     workshop_name: Optional[str] = None
     next_service_km: Optional[float] = None
     next_service_date: Optional[date] = None
@@ -34,9 +43,9 @@ class ServiceLogResponse(BaseModel):
 
     id: UUID
     bike_id: UUID
-    date: date
+    logged_at: datetime
     odometer_reading: Optional[float]
-    service_type: ServiceType
+    service_items: list[ServiceItem]
     cost: float
     workshop_name: Optional[str]
     next_service_km: Optional[float]

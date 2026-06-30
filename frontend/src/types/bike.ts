@@ -7,6 +7,9 @@ export interface Bike {
   make?: string;
   model?: string;
   year?: number;
+  cc?: number;
+  colour?: string;
+  tank_capacity?: number;
   odometer_unit: OdometerUnit;
   purchase_date?: string;
   purchase_price?: number;
@@ -21,6 +24,9 @@ export interface BikeCreate {
   make?: string;
   model?: string;
   year?: number;
+  cc?: number;
+  colour?: string;
+  tank_capacity?: number;
   odometer_unit?: OdometerUnit;
   purchase_date?: string;
   purchase_price?: number;

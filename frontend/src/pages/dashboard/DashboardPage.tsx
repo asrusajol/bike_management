@@ -40,13 +40,10 @@ export default function DashboardPage() {
       {stats && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Total Spent" value={formatCurrency(stats.summary.total_cost)} icon={TrendingUp} color="blue" />
-            <StatCard label="Fuel" value={formatCurrency(stats.summary.total_fuel_cost)} icon={Fuel} color="orange"
-              sub={`${stats.summary.fuel_logs_count} fill-ups`} />
-            <StatCard label="Services" value={formatCurrency(stats.summary.total_service_cost)} icon={Wrench} color="green"
-              sub={`${stats.summary.service_logs_count} records`} />
-            <StatCard label="Other Expenses" value={formatCurrency(stats.summary.total_expense_cost)} icon={Receipt} color="purple"
-              sub={`${stats.summary.expense_count} records`} />
+            <StatCard label="Total Spent"    value={formatCurrency(stats.summary.total_cost)}         icon={TrendingUp} color="blue" />
+            <StatCard label="Fuel"           value={formatCurrency(stats.summary.total_fuel_cost)}    icon={Fuel}       color="orange" sub={`${stats.summary.fuel_logs_count} fill-ups`} />
+            <StatCard label="Services"       value={formatCurrency(stats.summary.total_service_cost)} icon={Wrench}     color="green"  sub={`${stats.summary.service_logs_count} records`} />
+            <StatCard label="Other Expenses" value={formatCurrency(stats.summary.total_expense_cost)} icon={Receipt}    color="purple" sub={`${stats.summary.expense_count} records`} />
           </div>
 
           {stats.avg_fuel_efficiency && (
@@ -66,9 +63,9 @@ export default function DashboardPage() {
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(v: number) => formatCurrency(v)} />
                   <Legend />
-                  <Bar dataKey="fuel_cost" name="Fuel" fill="#f97316" stackId="a" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="fuel_cost"    name="Fuel"    fill="#f97316" stackId="a" />
                   <Bar dataKey="service_cost" name="Service" fill="#22c55e" stackId="a" />
-                  <Bar dataKey="expense_cost" name="Other" fill="#a855f7" stackId="a" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expense_cost" name="Other"   fill="#a855f7" stackId="a" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -50,3 +50,19 @@ docker-compose.override.yml
 
 # ── Uploads / media ───────────────────────────────────────────────────────────
 backend/uploads/
+
+# ── Type checking ─────────────────────────────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+
+# ── Secrets / certs ───────────────────────────────────────────────────────────
+*.pem
+*.key
+*.crt
+
+# ── Frontend build artifacts ──────────────────────────────────────────────────
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local

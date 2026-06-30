@@ -13,7 +13,7 @@ from app.schemas.stats import MonthlyStats
 async def get_monthly_stats(db: AsyncSession, bike_id: UUID) -> list[MonthlyStats]:
     fuel_q = await db.execute(
         select(
-            func.to_char(FuelLog.date, "YYYY-MM").label("month"),
+            func.to_char(FuelLog.logged_at, "YYYY-MM").label("month"),
             func.sum(FuelLog.total_cost).label("fuel_cost"),
         )
         .where(FuelLog.bike_id == bike_id)
@@ -23,7 +23,7 @@ async def get_monthly_stats(db: AsyncSession, bike_id: UUID) -> list[MonthlyStat
 
     service_q = await db.execute(
         select(
-            func.to_char(ServiceLog.date, "YYYY-MM").label("month"),
+            func.to_char(ServiceLog.logged_at, "YYYY-MM").label("month"),
             func.sum(ServiceLog.cost).label("service_cost"),
         )
         .where(ServiceLog.bike_id == bike_id)
@@ -33,7 +33,7 @@ async def get_monthly_stats(db: AsyncSession, bike_id: UUID) -> list[MonthlyStat
 
     expense_q = await db.execute(
         select(
-            func.to_char(Expense.date, "YYYY-MM").label("month"),
+            func.to_char(Expense.logged_at, "YYYY-MM").label("month"),
             func.sum(Expense.cost).label("expense_cost"),
         )
         .where(Expense.bike_id == bike_id)
@@ -61,21 +61,38 @@ async def get_monthly_stats(db: AsyncSession, bike_id: UUID) -> list[MonthlyStat
     ]
 
 
+def _compute_efficiencies(logs: list) -> list[float]:
+    """Return per-fill-up km/L values from consecutive odometer pairs."""
+    result = []
+    for i in range(1, len(logs)):
+        distance = logs[i].odometer_reading - logs[i - 1].odometer_reading
+        if distance > 0 and logs[i].fuel_quantity > 0:
+            result.append(round(distance / logs[i].fuel_quantity, 2))
+    return result
+
+
 async def get_avg_fuel_efficiency(db: AsyncSession, bike_id: UUID) -> Optional[float]:
-    """Average km/l across all consecutive full-tank pairs."""
     result = await db.execute(
         select(FuelLog)
         .where(FuelLog.bike_id == bike_id, FuelLog.is_full_tank.is_(True))
         .order_by(FuelLog.odometer_reading.asc())
     )
     logs = list(result.scalars().all())
-    if len(logs) < 2:
-        return None
-
-    efficiencies = []
-    for i in range(1, len(logs)):
-        distance = logs[i].odometer_reading - logs[i - 1].odometer_reading
-        if distance > 0 and logs[i].fuel_quantity > 0:
-            efficiencies.append(distance / logs[i].fuel_quantity)
-
+    efficiencies = _compute_efficiencies(logs)
     return round(sum(efficiencies) / len(efficiencies), 2) if efficiencies else None
+
+
+async def get_fuel_efficiency_range(
+    db: AsyncSession, bike_id: UUID
+) -> tuple[Optional[float], Optional[float]]:
+    """Return (min_efficiency, max_efficiency) across all consecutive log pairs."""
+    result = await db.execute(
+        select(FuelLog)
+        .where(FuelLog.bike_id == bike_id, FuelLog.odometer_reading.isnot(None))
+        .order_by(FuelLog.logged_at.asc())
+    )
+    logs = list(result.scalars().all())
+    efficiencies = _compute_efficiencies(logs)
+    if not efficiencies:
+        return None, None
+    return min(efficiencies), max(efficiencies)

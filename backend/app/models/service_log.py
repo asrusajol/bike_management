@@ -1,14 +1,15 @@
+from __future__ import annotations
+
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import String, Float, Date, ForeignKey, Enum as SAEnum
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Float, Date, DateTime, ForeignKey, String
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 from app.models.base import UUIDMixin, TimestampMixin
-from app.models.enums import ServiceType
 
 
 class ServiceLog(UUIDMixin, TimestampMixin, Base):
@@ -17,10 +18,11 @@ class ServiceLog(UUIDMixin, TimestampMixin, Base):
     bike_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("bikes.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    date: Mapped[date] = mapped_column(Date, nullable=False)
+    logged_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     odometer_reading: Mapped[Optional[float]] = mapped_column(Float)
-    service_type: Mapped[ServiceType] = mapped_column(SAEnum(ServiceType), nullable=False)
-    cost: Mapped[float] = mapped_column(Float, nullable=False)
+    # [{name: str, cost: float}, ...] — individual line items
+    service_items: Mapped[list] = mapped_column(JSONB, nullable=False)
+    cost: Mapped[float] = mapped_column(Float, nullable=False)  # sum of service_items costs
     workshop_name: Mapped[Optional[str]] = mapped_column(String(200))
     next_service_km: Mapped[Optional[float]] = mapped_column(Float)
     next_service_date: Mapped[Optional[date]] = mapped_column(Date)

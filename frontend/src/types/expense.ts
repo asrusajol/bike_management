@@ -22,7 +22,7 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 export interface Expense {
   id: string;
   bike_id: string;
-  date: string;
+  logged_at: string;
   category: ExpenseCategory;
   cost: number;
   description?: string;
@@ -32,7 +32,7 @@ export interface Expense {
 }
 
 export interface ExpenseCreate {
-  date: string;
+  logged_at: string;
   category: ExpenseCategory;
   cost: number;
   description?: string;

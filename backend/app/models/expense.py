@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import uuid
-from datetime import date
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Float, Date, ForeignKey, Enum as SAEnum
+from sqlalchemy import String, Float, DateTime, ForeignKey, Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,7 +19,7 @@ class Expense(UUIDMixin, TimestampMixin, Base):
     bike_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("bikes.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    date: Mapped[date] = mapped_column(Date, nullable=False)
+    logged_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     category: Mapped[ExpenseCategory] = mapped_column(SAEnum(ExpenseCategory), nullable=False)
     cost: Mapped[float] = mapped_column(Float, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String(500))

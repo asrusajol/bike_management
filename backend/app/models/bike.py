@@ -21,6 +21,9 @@ class Bike(UUIDMixin, TimestampMixin, Base):
     make: Mapped[Optional[str]] = mapped_column(String(100))
     model: Mapped[Optional[str]] = mapped_column(String(100))
     year: Mapped[Optional[int]] = mapped_column(Integer)
+    cc: Mapped[Optional[int]] = mapped_column(Integer)
+    colour: Mapped[Optional[str]] = mapped_column(String(100))
+    tank_capacity: Mapped[Optional[float]] = mapped_column(Float)
     odometer_unit: Mapped[OdometerUnit] = mapped_column(
         SAEnum(OdometerUnit), default=OdometerUnit.KM, nullable=False
     )
