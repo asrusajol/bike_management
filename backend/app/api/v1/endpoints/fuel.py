@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
@@ -83,7 +83,7 @@ async def list_fuel_logs(bike_id: UUID, current_user: CurrentUser, db: DBSession
 async def create_fuel_log(bike_id: UUID, data: FuelLogCreate, current_user: CurrentUser, db: DBSession):
     await get_bike_for_user(db, bike_id, current_user.id)
 
-    if data.logged_at > datetime.now():
+    if data.logged_at > datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Fill-up datetime cannot be in the future.",
@@ -127,7 +127,7 @@ async def update_fuel_log(
     new_logged_at = update_data.get("logged_at", log.logged_at)
     new_odometer = update_data.get("odometer_reading", log.odometer_reading)
 
-    if "logged_at" in update_data and update_data["logged_at"] > datetime.now():
+    if "logged_at" in update_data and update_data["logged_at"] > datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Fill-up datetime cannot be in the future.",

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.vite/
+
+.env
+.env.*
+!.env.example
+
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+*.log
+README.md

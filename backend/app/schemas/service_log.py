@@ -1,8 +1,12 @@
 from uuid import UUID
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+
+
+def _as_utc(v: datetime) -> datetime:
+    return v if v.tzinfo is not None else v.replace(tzinfo=timezone.utc)
 
 
 class ServiceItem(BaseModel):
@@ -18,6 +22,11 @@ class ServiceLogCreate(BaseModel):
     next_service_km: Optional[float] = None
     next_service_date: Optional[date] = None
     notes: Optional[str] = None
+
+    @field_validator("logged_at", mode="after")
+    @classmethod
+    def normalise_tz(cls, v: datetime) -> datetime:
+        return _as_utc(v)
 
     @model_validator(mode="after")
     def validate_items(self):
@@ -36,6 +45,11 @@ class ServiceLogUpdate(BaseModel):
     next_service_km: Optional[float] = None
     next_service_date: Optional[date] = None
     notes: Optional[str] = None
+
+    @field_validator("logged_at", mode="after")
+    @classmethod
+    def normalise_tz(cls, v: Optional[datetime]) -> Optional[datetime]:
+        return _as_utc(v) if v is not None else v
 
 
 class ServiceLogResponse(BaseModel):

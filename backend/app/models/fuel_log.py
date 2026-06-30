@@ -18,7 +18,7 @@ class FuelLog(UUIDMixin, TimestampMixin, Base):
     bike_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("bikes.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    logged_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    logged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     odometer_reading: Mapped[float] = mapped_column(Float, nullable=False)
     fuel_quantity: Mapped[float] = mapped_column(Float, nullable=False)
     fuel_price_per_unit: Mapped[float] = mapped_column(Float, nullable=False)

@@ -1,8 +1,13 @@
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+
+
+def _as_utc(v: datetime) -> datetime:
+    """Attach UTC timezone to naive datetimes so PostgreSQL TIMESTAMPTZ is happy."""
+    return v if v.tzinfo is not None else v.replace(tzinfo=timezone.utc)
 
 
 class FuelLogCreate(BaseModel):
@@ -14,6 +19,11 @@ class FuelLogCreate(BaseModel):
     is_full_tank: bool = True
     station_name: Optional[str] = None
     notes: Optional[str] = None
+
+    @field_validator("logged_at", mode="after")
+    @classmethod
+    def normalise_tz(cls, v: datetime) -> datetime:
+        return _as_utc(v)
 
     @model_validator(mode="after")
     def compute_missing(self):
@@ -43,6 +53,11 @@ class FuelLogUpdate(BaseModel):
     station_name: Optional[str] = None
     notes: Optional[str] = None
 
+    @field_validator("logged_at", mode="after")
+    @classmethod
+    def normalise_tz(cls, v: Optional[datetime]) -> Optional[datetime]:
+        return _as_utc(v) if v is not None else v
+
 
 class FuelLogResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -58,6 +73,6 @@ class FuelLogResponse(BaseModel):
     station_name: Optional[str]
     notes: Optional[str]
     created_at: datetime
-    # Computed from adjacent entries — not stored in DB
+    # Computed fields — not stored in DB
     km_since_last: Optional[float] = None
     fuel_efficiency: Optional[float] = None  # km per litre

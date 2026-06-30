@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
@@ -31,7 +31,7 @@ async def create_service_log(
 ):
     await get_bike_for_user(db, bike_id, current_user.id)
 
-    if data.logged_at > datetime.now():
+    if data.logged_at > datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Service datetime cannot be in the future.",
@@ -71,7 +71,7 @@ async def update_service_log(
 
     update_data = data.model_dump(exclude_unset=True)
 
-    if "logged_at" in update_data and update_data["logged_at"] > datetime.now():
+    if "logged_at" in update_data and update_data["logged_at"] > datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Service datetime cannot be in the future.",

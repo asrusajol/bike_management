@@ -19,7 +19,7 @@ class Expense(UUIDMixin, TimestampMixin, Base):
     bike_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("bikes.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    logged_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    logged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     category: Mapped[ExpenseCategory] = mapped_column(SAEnum(ExpenseCategory), nullable=False)
     cost: Mapped[float] = mapped_column(Float, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String(500))
