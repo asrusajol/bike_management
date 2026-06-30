@@ -1,0 +1,499 @@
+{
+  "info": {
+    "name": "Bike Maintenance Tracker API",
+    "description": "Complete REST API for the Bike Maintenance Tracker. Login first — the token and IDs are captured automatically into collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{access_token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url",       "value": "http://localhost:8000", "type": "string" },
+    { "key": "access_token",   "value": "",                      "type": "string" },
+    { "key": "refresh_token",  "value": "",                      "type": "string" },
+    { "key": "bike_id",        "value": "",                      "type": "string" },
+    { "key": "fuel_log_id",    "value": "",                      "type": "string" },
+    { "key": "service_log_id", "value": "",                      "type": "string" },
+    { "key": "expense_id",     "value": "",                      "type": "string" },
+    { "key": "reminder_id",    "value": "",                      "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rider@example.com\",\n  \"password\": \"secret123\",\n  \"full_name\": \"Rajib Ahmed\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.access_token) {",
+                  "  pm.collectionVariables.set('access_token', r.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', r.refresh_token);",
+                  "  console.log('Tokens saved.');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "username", "value": "rider@example.com", "type": "text" },
+                { "key": "password", "value": "secret123",         "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.access_token) {",
+                  "  pm.collectionVariables.set('access_token', r.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', r.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/auth/refresh", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "refresh"] }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/auth/me", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Rajib Ahmed Updated\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/auth/me", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"secret123\",\n  \"new_password\": \"newsecret456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/auth/me/change-password", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "me", "change-password"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bikes",
+      "item": [
+        {
+          "name": "List Bikes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", ""] }
+          }
+        },
+        {
+          "name": "Create Bike",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.id) {",
+                  "  pm.collectionVariables.set('bike_id', r.id);",
+                  "  console.log('bike_id saved: ' + r.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Yamaha R15\",\n  \"make\": \"Yamaha\",\n  \"model\": \"R15 V4\",\n  \"year\": 2023,\n  \"odometer_unit\": \"km\",\n  \"purchase_date\": \"2023-01-15\",\n  \"purchase_price\": 150000,\n  \"plate_number\": \"DH-1234\",\n  \"notes\": \"Primary commute bike\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/bikes/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", ""] }
+          }
+        },
+        {
+          "name": "Get Bike",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}"] }
+          }
+        },
+        {
+          "name": "Update Bike",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Yamaha R15 V4\",\n  \"plate_number\": \"DH-5678\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}"] }
+          }
+        },
+        {
+          "name": "Delete Bike",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fuel Logs",
+      "item": [
+        {
+          "name": "List Fuel Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/fuel/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "fuel", ""] }
+          }
+        },
+        {
+          "name": "Create Fuel Log",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.id) pm.collectionVariables.set('fuel_log_id', r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-06-29\",\n  \"odometer_reading\": 12500,\n  \"fuel_quantity\": 8.5,\n  \"fuel_price_per_unit\": 105.50,\n  \"is_full_tank\": true,\n  \"station_name\": \"Padma Petrol Station\",\n  \"notes\": \"Highway fill-up\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/fuel/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "fuel", ""] }
+          }
+        },
+        {
+          "name": "Get Fuel Log",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/fuel/{{fuel_log_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "fuel", "{{fuel_log_id}}"] }
+          }
+        },
+        {
+          "name": "Update Fuel Log",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"station_name\": \"Meghna CNG & Petrol\",\n  \"notes\": \"Updated note\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/fuel/{{fuel_log_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "fuel", "{{fuel_log_id}}"] }
+          }
+        },
+        {
+          "name": "Delete Fuel Log",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/fuel/{{fuel_log_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "fuel", "{{fuel_log_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service Logs",
+      "description": "service_type options: oil_change, tire, brake, chain, filter, battery, spark_plug, coolant, general, other",
+      "item": [
+        {
+          "name": "List Service Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/services/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "services", ""] }
+          }
+        },
+        {
+          "name": "Create Service Log",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.id) pm.collectionVariables.set('service_log_id', r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-06-29\",\n  \"odometer_reading\": 12500,\n  \"service_type\": \"oil_change\",\n  \"cost\": 800,\n  \"workshop_name\": \"Yamaha Service Center Dhaka\",\n  \"next_service_km\": 15000,\n  \"next_service_date\": \"2026-12-01\",\n  \"notes\": \"10W40 Motul oil used\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/services/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "services", ""] }
+          }
+        },
+        {
+          "name": "Get Service Log",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/services/{{service_log_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "services", "{{service_log_id}}"] }
+          }
+        },
+        {
+          "name": "Update Service Log",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cost\": 850,\n  \"notes\": \"Extra air filter replaced\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/services/{{service_log_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "services", "{{service_log_id}}"] }
+          }
+        },
+        {
+          "name": "Delete Service Log",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/services/{{service_log_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "services", "{{service_log_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "description": "category options: insurance, tax, parking, accessories, repair, cleaning, fine, other",
+      "item": [
+        {
+          "name": "List Expenses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/expenses/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "expenses", ""] }
+          }
+        },
+        {
+          "name": "Create Expense",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.id) pm.collectionVariables.set('expense_id', r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-06-29\",\n  \"category\": \"insurance\",\n  \"cost\": 5500,\n  \"description\": \"Annual insurance renewal — SBC\",\n  \"notes\": \"Policy #BD-2026-0123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/expenses/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "expenses", ""] }
+          }
+        },
+        {
+          "name": "Get Expense",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/expenses/{{expense_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "expenses", "{{expense_id}}"] }
+          }
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cost\": 5600,\n  \"notes\": \"Updated policy cost after correction\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/expenses/{{expense_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "expenses", "{{expense_id}}"] }
+          }
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/expenses/{{expense_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "expenses", "{{expense_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reminders",
+      "description": "type options: service, insurance, tax, custom",
+      "item": [
+        {
+          "name": "List Reminders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/reminders/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "reminders", ""] }
+          }
+        },
+        {
+          "name": "Create Reminder",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.id) pm.collectionVariables.set('reminder_id', r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"service\",\n  \"title\": \"Oil Change Due\",\n  \"trigger_km\": 15000,\n  \"trigger_date\": \"2026-12-01\",\n  \"notes\": \"Use Motul 10W40\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/reminders/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "reminders", ""] }
+          }
+        },
+        {
+          "name": "Update Reminder",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trigger_km\": 15500,\n  \"is_active\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/reminders/{{reminder_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "reminders", "{{reminder_id}}"] }
+          }
+        },
+        {
+          "name": "Delete Reminder",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/reminders/{{reminder_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "reminders", "{{reminder_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stats",
+      "item": [
+        {
+          "name": "Get Bike Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/bikes/{{bike_id}}/stats/", "host": ["{{base_url}}"], "path": ["api", "v1", "bikes", "{{bike_id}}", "stats", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+          }
+        }
+      ]
+    }
+  ]
+}
