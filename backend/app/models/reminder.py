@@ -17,7 +17,9 @@ class Reminder(UUIDMixin, TimestampMixin, Base):
     bike_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("bikes.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    type: Mapped[ReminderType] = mapped_column(SAEnum(ReminderType), nullable=False)
+    type: Mapped[ReminderType] = mapped_column(
+        SAEnum(ReminderType, values_callable=lambda e: [m.value for m in e]), nullable=False
+    )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     trigger_km: Mapped[Optional[float]] = mapped_column(Float)
     trigger_date: Mapped[Optional[date]] = mapped_column(Date)
