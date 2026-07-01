@@ -5,16 +5,10 @@ import { useFuelLogs, useCreateFuelLog, useDeleteFuelLog } from '@/hooks/useFuel
 import BikeSelector from '@/components/shared/BikeSelector';
 import EmptyState from '@/components/shared/EmptyState';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, nowLocalInput, localInputToUtcIso } from '@/lib/utils';
 
 const PRICE_KEY = 'fuel_price_per_unit';
 const STATIONS_KEY = 'fuel_stations';
-
-function nowLocal(): string {
-  const d = new Date();
-  d.setSeconds(0, 0);
-  return d.toISOString().slice(0, 16);
-}
 
 function loadPrice(): string { return localStorage.getItem(PRICE_KEY) ?? ''; }
 function loadStations(): string[] {
@@ -34,7 +28,7 @@ type FormState = {
 };
 
 function makeEmpty(): FormState {
-  return { logged_at: nowLocal(), odometer_reading: '', fuel_price_per_unit: loadPrice(),
+  return { logged_at: nowLocalInput(), odometer_reading: '', fuel_price_per_unit: loadPrice(),
            fuel_quantity: '', total_cost: '', station_name: '', is_full_tank: true };
 }
 
@@ -78,7 +72,7 @@ export default function FuelPage() {
   const [stations, setStations] = useState<string[]>(loadStations);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const maxDatetime = nowLocal();
+  const maxDatetime = nowLocalInput();
 
   const handlePriceChange = (val: string) => {
     if (lastEdited === 'qty') setForm((f) => ({ ...f, fuel_price_per_unit: val, total_cost: calcTotal(f.fuel_quantity, val) }));
@@ -94,7 +88,7 @@ export default function FuelPage() {
     const updated = saveStation(form.station_name, stations);
     setStations(updated);
     createLog.mutate(
-      { logged_at: form.logged_at, odometer_reading: parseFloat(form.odometer_reading),
+      { logged_at: localInputToUtcIso(form.logged_at), odometer_reading: parseFloat(form.odometer_reading),
         fuel_price_per_unit: parseFloat(form.fuel_price_per_unit),
         fuel_quantity: form.fuel_quantity ? parseFloat(form.fuel_quantity) : undefined,
         total_cost: form.total_cost ? parseFloat(form.total_cost) : undefined,

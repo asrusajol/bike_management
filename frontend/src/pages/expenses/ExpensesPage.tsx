@@ -6,13 +6,10 @@ import BikeSelector from '@/components/shared/BikeSelector';
 import EmptyState from '@/components/shared/EmptyState';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { EXPENSE_CATEGORY_LABELS, type ExpenseCategory } from '@/types/expense';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, nowLocalInput, localInputToUtcIso } from '@/lib/utils';
 
 const CATEGORIES = Object.entries(EXPENSE_CATEGORY_LABELS) as [ExpenseCategory, string][];
 
-function nowLocal(): string {
-  const d = new Date(); d.setSeconds(0, 0); return d.toISOString().slice(0, 16);
-}
 function formatDatetime(iso: string) {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -20,7 +17,7 @@ function formatDatetime(iso: string) {
 
 type FormState = { logged_at: string; category: ExpenseCategory; cost: string; description: string; notes: string };
 function makeEmpty(): FormState {
-  return { logged_at: nowLocal(), category: 'insurance', cost: '', description: '', notes: '' };
+  return { logged_at: nowLocalInput(), category: 'insurance', cost: '', description: '', notes: '' };
 }
 
 const categoryColors: Record<ExpenseCategory, string> = {
@@ -47,7 +44,7 @@ export default function ExpensesPage() {
   const [form, setForm] = useState<FormState>(makeEmpty);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const maxDatetime = nowLocal();
+  const maxDatetime = nowLocalInput();
 
   const resetForm = () => { setShowForm(false); setForm(makeEmpty()); setApiError(null); };
 
@@ -55,7 +52,7 @@ export default function ExpensesPage() {
     e.preventDefault();
     setApiError(null);
     createExpense.mutate(
-      { logged_at: form.logged_at, category: form.category, cost: parseFloat(form.cost),
+      { logged_at: localInputToUtcIso(form.logged_at), category: form.category, cost: parseFloat(form.cost),
         description: form.description || undefined, notes: form.notes || undefined },
       { onSuccess: resetForm, onError: (err: unknown) => {
           const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;

@@ -6,13 +6,10 @@ import BikeSelector from '@/components/shared/BikeSelector';
 import EmptyState from '@/components/shared/EmptyState';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { PREDEFINED_SERVICE_TYPES } from '@/types/service';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, nowLocalInput, localInputToUtcIso } from '@/lib/utils';
 
 const CUSTOM_TYPES_KEY = 'custom_service_types';
 
-function nowLocal(): string {
-  const d = new Date(); d.setSeconds(0, 0); return d.toISOString().slice(0, 16);
-}
 function loadCustomTypes(): string[] {
   try { return JSON.parse(localStorage.getItem(CUSTOM_TYPES_KEY) ?? '[]'); } catch { return []; }
 }
@@ -30,7 +27,7 @@ function formatDatetime(iso: string) {
 type ItemDraft = { name: string; cost: string };
 type FormState = { logged_at: string; odometer_reading: string; workshop_name: string; next_service_km: string; notes: string };
 function makeEmpty(): FormState {
-  return { logged_at: nowLocal(), odometer_reading: '', workshop_name: '', next_service_km: '', notes: '' };
+  return { logged_at: nowLocalInput(), odometer_reading: '', workshop_name: '', next_service_km: '', notes: '' };
 }
 
 export default function ServicesPage() {
@@ -52,7 +49,7 @@ export default function ServicesPage() {
   const allTypes = [...PREDEFINED_SERVICE_TYPES, ...customTypes];
   const selectedNames = items.map((i) => i.name);
   const totalCost = items.reduce((s, i) => s + (parseFloat(i.cost) || 0), 0);
-  const maxDatetime = nowLocal();
+  const maxDatetime = nowLocalInput();
 
   const toggleType = (name: string) => {
     if (selectedNames.includes(name)) setItems((p) => p.filter((i) => i.name !== name));
@@ -76,7 +73,7 @@ export default function ServicesPage() {
     }
     setApiError(null);
     createLog.mutate(
-      { logged_at: form.logged_at, service_items: items.map((i) => ({ name: i.name, cost: parseFloat(i.cost) })),
+      { logged_at: localInputToUtcIso(form.logged_at), service_items: items.map((i) => ({ name: i.name, cost: parseFloat(i.cost) })),
         odometer_reading: form.odometer_reading ? parseFloat(form.odometer_reading) : undefined,
         workshop_name: form.workshop_name || undefined,
         next_service_km: form.next_service_km ? parseFloat(form.next_service_km) : undefined,
