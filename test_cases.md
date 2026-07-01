@@ -657,7 +657,91 @@ curl -s https://vehixo.xyz/api/v1/bikes \
 
 ---
 
-## 9. Cleanup
+## 9. Timezone Handling (Fuel / Service / Expenses)
+
+Fuel, service, and expense forms previously defaulted their date/time picker to UTC
+instead of the user's local time, and submitted a naive local timestamp that the
+backend mislabeled as UTC (shifting it by the user's UTC offset). The frontend now
+sends a proper timezone-aware timestamp; these tests confirm the backend evaluates
+the *absolute* instant correctly regardless of which offset it's expressed in, and
+still falls back sanely for clients that send a naive (offset-less) timestamp.
+
+```bash
+# Helper: print a timestamp `delta_seconds` from now, expressed with a `offset_hours` UTC offset.
+# The wall-clock digits differ by the offset, but the absolute instant is identical.
+iso_with_offset() {
+  local delta_seconds=$1 offset_hours=$2
+  local epoch=$(( $(date -u +%s) + delta_seconds + offset_hours*3600 ))
+  printf '%s+%02d:00\n' "$(date -u -d "@$epoch" +%Y-%m-%dT%H:%M:%S)" "$offset_hours"
+}
+
+PAST_PLUS6=$(iso_with_offset -300 6)     # 5 min ago, expressed in +06:00
+FUTURE_PLUS6=$(iso_with_offset 300 6)    # 5 min from now, expressed in +06:00
+PAST_NAIVE=$(date -u -d "-5 minutes" +%Y-%m-%dT%H:%M:%S)   # 5 min ago, no offset
+FUTURE_NAIVE=$(date -u -d "+5 minutes" +%Y-%m-%dT%H:%M:%S) # 5 min from now, no offset
+```
+
+### 9-1 — Past instant with a non-UTC offset is accepted
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -X POST https://vehixo.xyz/api/v1/bikes/$BIKE2_ID/fuel \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"logged_at\":\"$PAST_PLUS6\",\"odometer_reading\":1500,\"fuel_quantity\":5,\"fuel_price_per_unit\":1.80}"
+```
+
+**Expected:** `201`. The `+06:00` offset must be honoured — a naive-UTC misreading of the
+same digits would place this several hours in the future and could wrongly reject it.
+
+### 9-2 — Future instant with a non-UTC offset is still rejected
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -X POST https://vehixo.xyz/api/v1/bikes/$BIKE2_ID/fuel \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"logged_at\":\"$FUTURE_PLUS6\",\"odometer_reading\":1600,\"fuel_quantity\":5,\"fuel_price_per_unit\":1.80}"
+```
+
+**Expected:** `422` — the offset must not be ignored in a way that makes a genuinely
+future instant look past.
+
+### 9-3 — Naive (offset-less) timestamp still falls back to UTC
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -X POST https://vehixo.xyz/api/v1/bikes/$BIKE2_ID/expenses \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"logged_at\":\"$PAST_NAIVE\",\"category\":\"other\",\"cost\":5}"
+
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -X POST https://vehixo.xyz/api/v1/bikes/$BIKE2_ID/expenses \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"logged_at\":\"$FUTURE_NAIVE\",\"category\":\"other\",\"cost\":5}"
+```
+
+**Expected:** First call `201` (past-in-UTC), second call `422` (future-in-UTC). This is
+the legacy fallback path — normal browser traffic no longer sends naive timestamps.
+
+### 9-4 — Manual frontend check (not scriptable via curl)
+
+1. Open the app in a browser whose OS/browser timezone is **not** UTC.
+2. Click **Add Fill-up** (or Service / Expense) and check the **Date & Time** field
+   *before* touching it — it must show the current local time shown by your device
+   clock, not the UTC time.
+3. Submit the entry and let it save.
+4. Reload the list — the displayed date/time for the new entry must match what your
+   device clock showed at submission, not a time shifted by your UTC offset.
+5. Open browser DevTools → Network tab, inspect the POST request body's `logged_at` —
+   it should be a full ISO string with a `Z` or `+HH:MM`/`-HH:MM` offset (e.g.
+   `2026-07-01T08:30:00.000Z`), never a bare `2026-07-01T14:30` with no offset.
+
+---
+
+## 10. Cleanup
 
 Delete test bikes (cascades to all logs and reminders):
 
@@ -734,4 +818,8 @@ curl -s https://vehixo.xyz/api/v1/bikes \
 | Isolation | 8-2 Other user bike | 404 | |
 | Isolation | 8-3 Other user fuel | 404 | |
 | Isolation | 8-4 Other user list | 200, [] | |
+| Timezone | 9-1 Past, +06:00 offset | 201 | |
+| Timezone | 9-2 Future, +06:00 offset | 422 | |
+| Timezone | 9-3 Naive past/future fallback | 201 then 422 | |
+| Timezone | 9-4 Manual frontend check | local time shown, no drift | |
 | Cleanup | Delete bikes | 204 | |

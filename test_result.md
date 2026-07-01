@@ -1,16 +1,22 @@
 # Production Test Results — Vehixo (BikeTrack)
 
-**Run date:** 2026-07-01 (retest after bug fixes)
+**Run date:** 2026-07-01 (retest after timezone-handling fix)
 **Base URL:** `https://vehixo.xyz/api/v1`
-**Method:** Executed the curl commands from `test_cases.md` against the live production API (fresh test accounts, real HTTP calls, no mocking).
+**Method:** Executed the curl commands from the current `test_cases.md` (10 sections, including the new Section 9 — Timezone Handling) against the live production API using fresh test accounts.
 
 ## Summary
 
-**All 47 test cases pass.** ✅ Both previously reported bugs are confirmed fixed:
+**All 50 automated test cases pass.** ✅
 
-- **Bug #1** (`POST /bikes/` → 500 on the `odometer_unit`/`category`/`type` enum mismatch) — fixed via `values_callable` on the three `SAEnum(...)` declarations. Bike, expense, and reminder creation all now work correctly.
-- **Bug #2** (missing-trailing-slash redirect pointing to `http://`) — bare paths now return a clean `404` instead of redirecting to plain HTTP. No more bearer-token-over-HTTP risk.
-- **Bug #3** (cross-user bike lookup returning `200` instead of `404`) — confirmed as an artifact of the earlier blocked bike creation, not a real isolation flaw. Retested with a real bike ID: correctly returns `404`.
+This run adds coverage for the newly added Section 9 (Timezone Handling), which verifies the fix for a bug where fuel/service/expense forms defaulted their date/time picker to UTC and the backend mislabeled naive local timestamps as UTC. All three automatable timezone checks pass:
+
+- A past instant expressed with a `+06:00` offset is correctly accepted (the backend evaluates the real absolute instant, not a naive misread of the digits).
+- A future instant expressed with a `+06:00` offset is still correctly rejected.
+- Naive (offset-less) timestamps still fall back sanely to UTC (past accepted, future rejected).
+
+Test 9-4 is a manual frontend/browser check (verifying the date picker shows local time and the request body sends an offset) and isn't automatable via curl — flagged as **not run**, recommend doing it manually in a non-UTC browser before considering this fully verified end-to-end.
+
+Previously reported bugs (enum-mismatch 500 on bike/expense/reminder creation, and the HTTP-downgrade redirect) remain fixed — reconfirmed in this run.
 
 | Area | Status |
 |---|---|
@@ -23,9 +29,8 @@
 | Reminders | ✅ Pass (5/5) |
 | Stats | ✅ Pass (2/2) |
 | Data Isolation | ✅ Pass (4/4) |
+| Timezone Handling | ✅ Pass (3/3 automated); ⚠️ 9-4 not run (manual browser check) |
 | Cleanup | ✅ Pass (3/3) |
-
-Note: client calls now use the trailing-slash form of collection URLs (`/bikes/`, `/bikes/{id}/fuel/`, etc.) since the app no longer redirects bare paths — see Bug #2 resolution above. This matches how any real client (browser fetch, axios, mobile app) would call these endpoints once pointed at the documented paths.
 
 ---
 
@@ -115,18 +120,29 @@ Note: client calls now use the trailing-slash form of collection URLs (`/bikes/`
 | 7-1 With data | `total_fuel_cost>0`, `total_km_run:400`, `monthly` non-empty | `total_fuel_cost:64.8`, `total_km_run:400.0`, `fuel_logs_count:3`*, `monthly:[{"month":"2026-06",...}]` | ✅ |
 | 7-2 Empty bike | all totals 0, `total_km_run:null` | `total_fuel_cost:0.0`, `total_service_cost:0.0`, `total_expense_cost:0.0`, `total_km_run:null` | ✅ |
 
-\* `fuel_logs_count` is 3 rather than the 2 implied by the spec's isolated walkthrough, because this run's test bike still had one fuel log left over from section 3 (`FUEL2`, never deleted by the spec). The math is still internally consistent — `total_km_run:400` correctly reflects `max(1000,1350,1400) - min(...) = 400` across all 3 records. Not a bug, just an artifact of running the full suite against one bike sequentially rather than a fresh bike per section.
+\* `fuel_logs_count` is 3 rather than the 2 implied by an isolated walkthrough, because this run's test bike still had one fuel log left over from section 3 (never deleted by the spec at that point). `total_km_run:400` is still correct — `max(1000,1350,1400) - min(...) = 400`. Not a bug, just an artifact of running the full suite sequentially against one bike.
 
 ### 8. Data Isolation
 
 | Test | Expected | Actual | Result |
 |---|---|---|---|
 | 8-1 Register second user | — | `201`, token obtained | ✅ |
-| 8-2 Cannot read other user's bike | 404 | `404` | ✅ (previously flagged as needing retest — now confirmed correct) |
+| 8-2 Cannot read other user's bike | 404 | `404` | ✅ |
 | 8-3 Cannot read other user's fuel logs | 404 | `404` | ✅ |
 | 8-4 Other user's bike list empty | 200, `[]` | `200`, `[]` | ✅ |
 
-### 9. Cleanup
+### 9. Timezone Handling (new section)
+
+| Test | Expected | Actual | Result |
+|---|---|---|---|
+| 9-1 Past instant, `+06:00` offset | 201 | `201`, `logged_at` correctly normalized to `2026-07-01T07:40:51Z` (5 min before test time) | ✅ |
+| 9-2 Future instant, `+06:00` offset | 422 | `422`, `"Fill-up datetime cannot be in the future."` | ✅ |
+| 9-3 Naive timestamp fallback (past then future) | 201 then 422 | `201` (past-naive expense created), `422` `"Expense datetime cannot be in the future."` (future-naive rejected) | ✅ |
+| 9-4 Manual frontend check | local time shown, no drift | Not run — requires a browser session with a non-UTC OS timezone; not automatable via curl | ⚠️ Not run |
+
+The critical check here is 9-1: a timestamp written as `13:40` with a `+06:00` offset is only 5 minutes in the past in absolute terms, but a naive-UTC misread of those same digits would place it ~6 hours in the future and get wrongly rejected. Since it returned `201` with `logged_at` correctly normalized to the UTC instant, the offset is being honored correctly — confirming the reported bug is fixed on the backend. Recommend running 9-4 manually in a non-UTC browser to confirm the frontend side (date picker default and payload format) before fully closing this out.
+
+### 10. Cleanup
 
 | Test | Expected | Actual | Result |
 |---|---|---|---|
@@ -138,4 +154,4 @@ Note: client calls now use the trailing-slash form of collection URLs (`/bikes/`
 
 ## Conclusion
 
-The application is now functioning correctly end-to-end for the full documented API surface: auth, bikes, fuel logs (with efficiency/odometer validation), service logs, expenses (all 8 categories), reminders, stats, cross-user data isolation, and cleanup/cascade delete. No further issues found in this pass.
+All automated tests pass across the full documented API surface, including the new timezone-handling fix. The only outstanding item is the manual frontend check (9-4), which needs a human to verify in a browser with a non-UTC system clock — recommend doing that before signing off on the timezone fix end-to-end.

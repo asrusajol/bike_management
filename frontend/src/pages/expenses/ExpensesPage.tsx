@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Pencil, AlertCircle } from 'lucide-react';
 import { useBikes } from '@/hooks/useBikes';
-import { useExpenses, useCreateExpense, useDeleteExpense } from '@/hooks/useExpenses';
+import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '@/hooks/useExpenses';
 import BikeSelector from '@/components/shared/BikeSelector';
 import EmptyState from '@/components/shared/EmptyState';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { EXPENSE_CATEGORY_LABELS, type ExpenseCategory } from '@/types/expense';
-import { formatCurrency, nowLocalInput, localInputToUtcIso } from '@/lib/utils';
+import { EXPENSE_CATEGORY_LABELS, type ExpenseCategory, type Expense } from '@/types/expense';
+import { formatCurrency, nowLocalInput, localInputToUtcIso, isoToLocalInput } from '@/lib/utils';
 
 const CATEGORIES = Object.entries(EXPENSE_CATEGORY_LABELS) as [ExpenseCategory, string][];
 
@@ -38,27 +38,47 @@ export default function ExpensesPage() {
 
   const { data: expenses, isLoading } = useExpenses(activeBikeId);
   const createExpense = useCreateExpense(activeBikeId);
+  const updateExpense = useUpdateExpense(activeBikeId);
   const deleteExpense = useDeleteExpense(activeBikeId);
 
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(makeEmpty);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const maxDatetime = nowLocalInput();
 
-  const resetForm = () => { setShowForm(false); setForm(makeEmpty()); setApiError(null); };
+  const resetForm = () => { setShowForm(false); setForm(makeEmpty()); setApiError(null); setEditingId(null); };
+
+  const startEdit = (exp: Expense) => {
+    setEditingId(exp.id);
+    setForm({
+      logged_at: isoToLocalInput(exp.logged_at),
+      category: exp.category,
+      cost: String(exp.cost),
+      description: exp.description ?? '',
+      notes: exp.notes ?? '',
+    });
+    setApiError(null);
+    setShowForm(true);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setApiError(null);
-    createExpense.mutate(
-      { logged_at: localInputToUtcIso(form.logged_at), category: form.category, cost: parseFloat(form.cost),
-        description: form.description || undefined, notes: form.notes || undefined },
-      { onSuccess: resetForm, onError: (err: unknown) => {
-          const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-          setApiError(msg ?? 'Failed to save expense.');
-        } },
-    );
+    const payload = {
+      logged_at: localInputToUtcIso(form.logged_at), category: form.category, cost: parseFloat(form.cost),
+      description: form.description || undefined, notes: form.notes || undefined,
+    };
+    const callbacks = {
+      onSuccess: resetForm,
+      onError: (err: unknown) => {
+        const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        setApiError(msg ?? 'Failed to save expense.');
+      },
+    };
+    if (editingId) updateExpense.mutate({ id: editingId, data: payload }, callbacks);
+    else createExpense.mutate(payload, callbacks);
   };
 
   const ic = 'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500';
@@ -69,7 +89,7 @@ export default function ExpensesPage() {
         <h1 className="text-2xl font-bold">Expenses</h1>
         <div className="flex items-center gap-3">
           <BikeSelector value={activeBikeId} onChange={setBikeId} />
-          <button onClick={() => { setShowForm(true); setApiError(null); }}
+          <button onClick={() => { setShowForm(true); setApiError(null); setEditingId(null); setForm(makeEmpty()); }}
             className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700">
             <Plus className="w-4 h-4" /><span className="hidden sm:inline">Add Expense</span><span className="sm:hidden">Add</span>
           </button>
@@ -78,7 +98,7 @@ export default function ExpensesPage() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-4 md:p-6 space-y-4">
-          <h2 className="font-semibold">New Expense</h2>
+          <h2 className="font-semibold">{editingId ? 'Edit Expense' : 'New Expense'}</h2>
           {apiError && (
             <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /><span>{apiError}</span>
@@ -103,9 +123,9 @@ export default function ExpensesPage() {
                 placeholder="Optional" className={ic} /></div>
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={createExpense.isPending}
+            <button type="submit" disabled={createExpense.isPending || updateExpense.isPending}
               className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50">
-              {createExpense.isPending ? 'Saving…' : 'Save'}
+              {createExpense.isPending || updateExpense.isPending ? 'Saving…' : editingId ? 'Update' : 'Save'}
             </button>
             <button type="button" onClick={resetForm} className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancel</button>
           </div>
@@ -140,9 +160,14 @@ export default function ExpensesPage() {
                     <td className="px-4 py-3 font-medium whitespace-nowrap">{formatCurrency(exp.cost)}</td>
                     <td className="px-4 py-3 text-gray-500">{exp.description ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => deleteExpense.mutate(exp.id)} className="text-gray-300 hover:text-red-500">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => startEdit(exp)} className="text-gray-300 hover:text-blue-500">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => deleteExpense.mutate(exp.id)} className="text-gray-300 hover:text-red-500">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -163,6 +188,9 @@ export default function ExpensesPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-base font-bold text-purple-700">{formatCurrency(exp.cost)}</span>
+                    <button onClick={() => startEdit(exp)} className="text-gray-300 hover:text-blue-500">
+                      <Pencil className="w-4 h-4" />
+                    </button>
                     <button onClick={() => deleteExpense.mutate(exp.id)} className="text-gray-300 hover:text-red-500">
                       <Trash2 className="w-4 h-4" />
                     </button>
