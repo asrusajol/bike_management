@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/api/expenses';
-import type { ExpenseCreate } from '@/types/expense';
+import type { ExpenseCreate, ExpenseUpdate } from '@/types/expense';
 
 const key = (bikeId: string) => ['bikes', bikeId, 'expenses'] as const;
 
@@ -11,6 +11,14 @@ export function useCreateExpense(bikeId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: ExpenseCreate) => api.createExpense(bikeId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: key(bikeId) }),
+  });
+}
+
+export function useUpdateExpense(bikeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ExpenseUpdate }) => api.updateExpense(bikeId, id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: key(bikeId) }),
   });
 }

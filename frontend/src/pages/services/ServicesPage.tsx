@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Plus, Trash2, X, AlertCircle, MapPin } from 'lucide-react';
+import { Plus, Trash2, Pencil, X, AlertCircle, MapPin } from 'lucide-react';
 import { useBikes } from '@/hooks/useBikes';
-import { useServiceLogs, useCreateServiceLog, useDeleteServiceLog } from '@/hooks/useServiceLogs';
+import { useServiceLogs, useCreateServiceLog, useUpdateServiceLog, useDeleteServiceLog } from '@/hooks/useServiceLogs';
 import BikeSelector from '@/components/shared/BikeSelector';
 import EmptyState from '@/components/shared/EmptyState';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { PREDEFINED_SERVICE_TYPES } from '@/types/service';
-import { formatCurrency, nowLocalInput, localInputToUtcIso } from '@/lib/utils';
+import type { ServiceLog } from '@/types/service';
+import { formatCurrency, nowLocalInput, localInputToUtcIso, isoToLocalInput } from '@/lib/utils';
 
 const CUSTOM_TYPES_KEY = 'custom_service_types';
 
@@ -37,9 +38,11 @@ export default function ServicesPage() {
 
   const { data: logs, isLoading } = useServiceLogs(activeBikeId);
   const createLog = useCreateServiceLog(activeBikeId);
+  const updateLog = useUpdateServiceLog(activeBikeId);
   const deleteLog = useDeleteServiceLog(activeBikeId);
 
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(makeEmpty);
   const [items, setItems] = useState<ItemDraft[]>([]);
   const [customTypes, setCustomTypes] = useState<string[]>(loadCustomTypes);
@@ -63,7 +66,22 @@ export default function ServicesPage() {
     if (!selectedNames.includes(t)) setItems((p) => [...p, { name: t, cost: '' }]);
     setCustomInput('');
   };
-  const resetForm = () => { setShowForm(false); setForm(makeEmpty()); setItems([]); setCustomInput(''); setApiError(null); };
+  const resetForm = () => { setShowForm(false); setForm(makeEmpty()); setItems([]); setCustomInput(''); setApiError(null); setEditingId(null); };
+
+  const startEdit = (log: ServiceLog) => {
+    setEditingId(log.id);
+    setForm({
+      logged_at: isoToLocalInput(log.logged_at),
+      odometer_reading: log.odometer_reading != null ? String(log.odometer_reading) : '',
+      workshop_name: log.workshop_name ?? '',
+      next_service_km: log.next_service_km != null ? String(log.next_service_km) : '',
+      notes: log.notes ?? '',
+    });
+    setItems(log.service_items.map((i) => ({ name: i.name, cost: String(i.cost) })));
+    setCustomInput('');
+    setApiError(null);
+    setShowForm(true);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,17 +90,22 @@ export default function ServicesPage() {
       setApiError('Please enter a valid cost for every service item.'); return;
     }
     setApiError(null);
-    createLog.mutate(
-      { logged_at: localInputToUtcIso(form.logged_at), service_items: items.map((i) => ({ name: i.name, cost: parseFloat(i.cost) })),
-        odometer_reading: form.odometer_reading ? parseFloat(form.odometer_reading) : undefined,
-        workshop_name: form.workshop_name || undefined,
-        next_service_km: form.next_service_km ? parseFloat(form.next_service_km) : undefined,
-        notes: form.notes || undefined },
-      { onSuccess: resetForm, onError: (err: unknown) => {
-          const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-          setApiError(msg ?? 'Failed to save service record.');
-        } },
-    );
+    const payload = {
+      logged_at: localInputToUtcIso(form.logged_at), service_items: items.map((i) => ({ name: i.name, cost: parseFloat(i.cost) })),
+      odometer_reading: form.odometer_reading ? parseFloat(form.odometer_reading) : undefined,
+      workshop_name: form.workshop_name || undefined,
+      next_service_km: form.next_service_km ? parseFloat(form.next_service_km) : undefined,
+      notes: form.notes || undefined,
+    };
+    const callbacks = {
+      onSuccess: resetForm,
+      onError: (err: unknown) => {
+        const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        setApiError(msg ?? 'Failed to save service record.');
+      },
+    };
+    if (editingId) updateLog.mutate({ id: editingId, data: payload }, callbacks);
+    else createLog.mutate(payload, callbacks);
   };
 
   const ic = 'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500';
@@ -93,7 +116,7 @@ export default function ServicesPage() {
         <h1 className="text-2xl font-bold">Service Logs</h1>
         <div className="flex items-center gap-3">
           <BikeSelector value={activeBikeId} onChange={setBikeId} />
-          <button onClick={() => { setShowForm(true); setApiError(null); }}
+          <button onClick={() => { setShowForm(true); setApiError(null); setEditingId(null); setForm(makeEmpty()); setItems([]); }}
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700">
             <Plus className="w-4 h-4" /><span className="hidden sm:inline">Add Service</span><span className="sm:hidden">Add</span>
           </button>
@@ -102,7 +125,7 @@ export default function ServicesPage() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-4 md:p-6 space-y-5">
-          <h2 className="font-semibold">New Service Record</h2>
+          <h2 className="font-semibold">{editingId ? 'Edit Service Record' : 'New Service Record'}</h2>
           {apiError && (
             <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /><span>{apiError}</span>
@@ -172,9 +195,9 @@ export default function ServicesPage() {
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></div>
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={createLog.isPending}
+            <button type="submit" disabled={createLog.isPending || updateLog.isPending}
               className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
-              {createLog.isPending ? 'Saving…' : 'Save'}
+              {createLog.isPending || updateLog.isPending ? 'Saving…' : editingId ? 'Update' : 'Save'}
             </button>
             <button type="button" onClick={resetForm} className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancel</button>
           </div>
@@ -218,7 +241,10 @@ export default function ServicesPage() {
                     <td className="px-4 py-3 text-gray-500">{log.workshop_name ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-500">{log.next_service_km ? log.next_service_km.toLocaleString() : '—'}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => deleteLog.mutate(log.id)} className="text-gray-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => startEdit(log)} className="text-gray-300 hover:text-blue-500"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={() => deleteLog.mutate(log.id)} className="text-gray-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -242,6 +268,9 @@ export default function ServicesPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-base font-bold text-green-700">{formatCurrency(log.cost)}</span>
+                    <button onClick={() => startEdit(log)} className="text-gray-300 hover:text-blue-500">
+                      <Pencil className="w-4 h-4" />
+                    </button>
                     <button onClick={() => deleteLog.mutate(log.id)} className="text-gray-300 hover:text-red-500">
                       <Trash2 className="w-4 h-4" />
                     </button>

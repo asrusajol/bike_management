@@ -15,6 +15,14 @@ export function useCreateServiceLog(bikeId: string) {
   });
 }
 
+export function useUpdateServiceLog(bikeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ServiceLogUpdate }) => api.updateServiceLog(bikeId, id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: key(bikeId) }),
+  });
+}
+
 export function useDeleteServiceLog(bikeId: string) {
   const qc = useQueryClient();
   return useMutation({
