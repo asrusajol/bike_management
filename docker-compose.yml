@@ -14,7 +14,7 @@ services:
       retries: 5
     # Bind to localhost only — external access not needed in production
     ports:
-      - "127.0.0.1:5434:5432"
+      - "0.0.0.0:5434:5432"
 
   # ── Cache / task queue ────────────────────────────────────────────────────────
   redis:
