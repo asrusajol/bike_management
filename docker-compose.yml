@@ -4,30 +4,27 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
-    environment:
-      POSTGRES_USER:     ${POSTGRES_USER:-bikeuser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bikepass}
-      POSTGRES_DB:       ${POSTGRES_DB:-bikedb}
+    env_file: ./backend/.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bikeuser} -d ${POSTGRES_DB:-bikedb}"]
+      test: ["CMD-SHELL", "pg_isready -U bikeuser -d bikedb"]
       interval: 10s
       timeout: 5s
       retries: 5
     # Bind to localhost only — external access not needed in production
     ports:
-      - "127.0.0.1:5434:5432"
+      - "0.0.0.0:5434:5432"
 
   # ── Cache / task queue ────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --save 60 1 --loglevel warning
+    command: redis-server --save "" --no-appendfsync-on-rewrite yes --loglevel warning
     volumes:
       - redis_data:/data
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:6679:6379"
 
   # ── FastAPI backend ───────────────────────────────────────────────────────────
   backend:
@@ -59,7 +56,7 @@ services:
         VITE_API_URL: ""
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:80"
+      - "3000:80"
     depends_on:
       - backend
 

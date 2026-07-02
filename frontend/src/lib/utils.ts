@@ -24,3 +24,27 @@ export function formatDate(dateStr: string) {
 export function formatOdometer(value: number, unit: 'km' | 'miles') {
   return `${value.toLocaleString()} ${unit}`;
 }
+
+/** Current local time as a `datetime-local` input value (e.g. "2026-07-01T14:30"), in the browser's own timezone. */
+export function nowLocalInput(): string {
+  const d = new Date();
+  d.setSeconds(0, 0);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * Convert a naive `datetime-local` value (interpreted as the browser's local time) into a
+ * timezone-aware ISO string in UTC, so the backend receives an unambiguous instant rather
+ * than a wall-clock time mislabeled as UTC.
+ */
+export function localInputToUtcIso(localValue: string): string {
+  return new Date(localValue).toISOString();
+}
+
+/** Convert a stored ISO timestamp back into a `datetime-local` value in the browser's local timezone, for editing. */
+export function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

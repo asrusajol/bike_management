@@ -6,11 +6,10 @@ import { useCreateServiceLog } from '@/hooks/useServiceLogs';
 import { useCreateExpense } from '@/hooks/useExpenses';
 import { PREDEFINED_SERVICE_TYPES } from '@/types/service';
 import { EXPENSE_CATEGORY_LABELS, type ExpenseCategory } from '@/types/expense';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, nowLocalInput, localInputToUtcIso } from '@/lib/utils';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function nowLocal() { const d = new Date(); d.setSeconds(0, 0); return d.toISOString().slice(0, 16); }
 const ic = 'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2';
 
 function ErrorBanner({ msg }: { msg: string }) {
@@ -45,7 +44,7 @@ function FuelForm({ bikeId, onSuccess }: { bikeId: string; onSuccess: () => void
   const { data: bikes } = useBikes();
   const activeBike = bikes?.find((b) => b.id === bikeId);
   const createLog = useCreateFuelLog(bikeId);
-  const [form, setForm] = useState({ logged_at: nowLocal(), odometer_reading: '', fuel_price_per_unit: loadPrice(), fuel_quantity: '', total_cost: '', station_name: '', is_full_tank: true });
+  const [form, setForm] = useState({ logged_at: nowLocalInput(), odometer_reading: '', fuel_price_per_unit: loadPrice(), fuel_quantity: '', total_cost: '', station_name: '', is_full_tank: true });
   const [lastEdited, setLastEdited] = useState<'qty' | 'total'>('qty');
   const [stations, setStations] = useState<string[]>(loadStations);
   const [err, setErr] = useState<string | null>(null);
@@ -62,7 +61,7 @@ function FuelForm({ bikeId, onSuccess }: { bikeId: string; onSuccess: () => void
     savePrice(form.fuel_price_per_unit);
     setStations(saveStation(form.station_name, stations));
     createLog.mutate(
-      { logged_at: form.logged_at, odometer_reading: parseFloat(form.odometer_reading), fuel_price_per_unit: parseFloat(form.fuel_price_per_unit), fuel_quantity: form.fuel_quantity ? parseFloat(form.fuel_quantity) : undefined, total_cost: form.total_cost ? parseFloat(form.total_cost) : undefined, is_full_tank: form.is_full_tank, station_name: form.station_name || undefined },
+      { logged_at: localInputToUtcIso(form.logged_at), odometer_reading: parseFloat(form.odometer_reading), fuel_price_per_unit: parseFloat(form.fuel_price_per_unit), fuel_quantity: form.fuel_quantity ? parseFloat(form.fuel_quantity) : undefined, total_cost: form.total_cost ? parseFloat(form.total_cost) : undefined, is_full_tank: form.is_full_tank, station_name: form.station_name || undefined },
       { onSuccess, onError: (e: unknown) => setErr((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to save.') },
     );
   };
@@ -75,7 +74,7 @@ function FuelForm({ bikeId, onSuccess }: { bikeId: string; onSuccess: () => void
       {err && <ErrorBanner msg={err} />}
       <div className="grid grid-cols-2 gap-3">
         <div><label className="block text-xs font-medium mb-1 text-gray-600">Date & Time</label>
-          <input type="datetime-local" value={form.logged_at} max={nowLocal()} required className={f1} onChange={(e) => setForm((f) => ({ ...f, logged_at: e.target.value }))} /></div>
+          <input type="datetime-local" value={form.logged_at} max={nowLocalInput()} required className={f1} onChange={(e) => setForm((f) => ({ ...f, logged_at: e.target.value }))} /></div>
         <div><label className="block text-xs font-medium mb-1 text-gray-600">Odometer (km)</label>
           <input type="number" step="0.1" value={form.odometer_reading} required placeholder="12500" className={f1} onChange={(e) => setForm((f) => ({ ...f, odometer_reading: e.target.value }))} /></div>
         <div><label className="block text-xs font-medium mb-1 text-gray-600">Price / Unit</label>
@@ -123,7 +122,7 @@ type ItemDraft = { name: string; cost: string };
 
 function ServiceForm({ bikeId, onSuccess }: { bikeId: string; onSuccess: () => void }) {
   const createLog = useCreateServiceLog(bikeId);
-  const [form, setForm] = useState({ logged_at: nowLocal(), odometer_reading: '', workshop_name: '', next_service_km: '' });
+  const [form, setForm] = useState({ logged_at: nowLocalInput(), odometer_reading: '', workshop_name: '', next_service_km: '' });
   const [items, setItems] = useState<ItemDraft[]>([]);
   const [customTypes, setCustomTypes] = useState<string[]>(loadCustomTypes);
   const [customInput, setCustomInput] = useState('');
@@ -147,7 +146,7 @@ function ServiceForm({ bikeId, onSuccess }: { bikeId: string; onSuccess: () => v
     if (items.some((i) => !i.cost || isNaN(parseFloat(i.cost)) || parseFloat(i.cost) < 0)) { setErr('Enter a valid cost for every item.'); return; }
     setErr(null);
     createLog.mutate(
-      { logged_at: form.logged_at, service_items: items.map((i) => ({ name: i.name, cost: parseFloat(i.cost) })), odometer_reading: form.odometer_reading ? parseFloat(form.odometer_reading) : undefined, workshop_name: form.workshop_name || undefined, next_service_km: form.next_service_km ? parseFloat(form.next_service_km) : undefined },
+      { logged_at: localInputToUtcIso(form.logged_at), service_items: items.map((i) => ({ name: i.name, cost: parseFloat(i.cost) })), odometer_reading: form.odometer_reading ? parseFloat(form.odometer_reading) : undefined, workshop_name: form.workshop_name || undefined, next_service_km: form.next_service_km ? parseFloat(form.next_service_km) : undefined },
       { onSuccess, onError: (e: unknown) => setErr((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to save.') },
     );
   };
@@ -198,7 +197,7 @@ function ServiceForm({ bikeId, onSuccess }: { bikeId: string; onSuccess: () => v
       )}
       <div className="grid grid-cols-2 gap-3">
         <div><label className="block text-xs font-medium mb-1 text-gray-600">Date & Time</label>
-          <input type="datetime-local" value={form.logged_at} max={nowLocal()} required className={fg} onChange={(e) => setForm((f) => ({ ...f, logged_at: e.target.value }))} /></div>
+          <input type="datetime-local" value={form.logged_at} max={nowLocalInput()} required className={fg} onChange={(e) => setForm((f) => ({ ...f, logged_at: e.target.value }))} /></div>
         <div><label className="block text-xs font-medium mb-1 text-gray-600">Odometer (km)</label>
           <input type="number" value={form.odometer_reading} placeholder="12500" className={fg} onChange={(e) => setForm((f) => ({ ...f, odometer_reading: e.target.value }))} /></div>
         <div><label className="block text-xs font-medium mb-1 text-gray-600">Workshop</label>
@@ -220,13 +219,13 @@ const EXPENSE_CATEGORIES = Object.entries(EXPENSE_CATEGORY_LABELS) as [ExpenseCa
 
 function ExpenseForm({ bikeId, onSuccess }: { bikeId: string; onSuccess: () => void }) {
   const createExpense = useCreateExpense(bikeId);
-  const [form, setForm] = useState({ logged_at: nowLocal(), category: 'insurance' as ExpenseCategory, cost: '', description: '' });
+  const [form, setForm] = useState({ logged_at: nowLocalInput(), category: 'insurance' as ExpenseCategory, cost: '', description: '' });
   const [err, setErr] = useState<string | null>(null);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault(); setErr(null);
     createExpense.mutate(
-      { logged_at: form.logged_at, category: form.category, cost: parseFloat(form.cost), description: form.description || undefined },
+      { logged_at: localInputToUtcIso(form.logged_at), category: form.category, cost: parseFloat(form.cost), description: form.description || undefined },
       { onSuccess, onError: (e: unknown) => setErr((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to save.') },
     );
   };
@@ -238,7 +237,7 @@ function ExpenseForm({ bikeId, onSuccess }: { bikeId: string; onSuccess: () => v
       {err && <ErrorBanner msg={err} />}
       <div className="grid grid-cols-2 gap-3">
         <div><label className="block text-xs font-medium mb-1 text-gray-600">Date & Time</label>
-          <input type="datetime-local" value={form.logged_at} max={nowLocal()} required className={fp} onChange={(e) => setForm((f) => ({ ...f, logged_at: e.target.value }))} /></div>
+          <input type="datetime-local" value={form.logged_at} max={nowLocalInput()} required className={fp} onChange={(e) => setForm((f) => ({ ...f, logged_at: e.target.value }))} /></div>
         <div><label className="block text-xs font-medium mb-1 text-gray-600">Category</label>
           <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as ExpenseCategory }))} className={fp}>
             {EXPENSE_CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}

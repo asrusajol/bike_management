@@ -25,7 +25,9 @@ class Bike(UUIDMixin, TimestampMixin, Base):
     colour: Mapped[Optional[str]] = mapped_column(String(100))
     tank_capacity: Mapped[Optional[float]] = mapped_column(Float)
     odometer_unit: Mapped[OdometerUnit] = mapped_column(
-        SAEnum(OdometerUnit), default=OdometerUnit.KM, nullable=False
+        SAEnum(OdometerUnit, values_callable=lambda e: [m.value for m in e]),
+        default=OdometerUnit.KM,
+        nullable=False,
     )
     purchase_date: Mapped[Optional[date]] = mapped_column(Date)
     purchase_price: Mapped[Optional[float]] = mapped_column(Float)

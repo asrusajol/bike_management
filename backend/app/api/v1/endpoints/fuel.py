@@ -13,18 +13,23 @@ router = APIRouter()
 
 
 def _enrich(logs: list[FuelLog]) -> list[FuelLogResponse]:
-    """Sort ASC, compute km_since_last and fuel_efficiency, return DESC."""
+    """Sort ASC. km_since_last/fuel_efficiency for an entry are the distance ridden and
+    efficiency achieved *on that fill-up's tank* — i.e. computed from the NEXT entry's
+    odometer/fuel_quantity, and attached to the earlier (this) entry rather than the
+    next one. The most recent fill-up has neither yet, since there's no next entry to
+    close out its tank. Return DESC."""
     ordered = sorted(logs, key=lambda l: l.logged_at)
+    last = len(ordered) - 1
     enriched: list[FuelLogResponse] = []
     for i, log in enumerate(ordered):
         km_since_last: float | None = None
         fuel_efficiency: float | None = None
-        if i > 0:
-            prev = ordered[i - 1]
-            km = round(log.odometer_reading - prev.odometer_reading, 1)
-            if km > 0 and log.fuel_quantity > 0:
+        if i < last:
+            nxt = ordered[i + 1]
+            km = round(nxt.odometer_reading - log.odometer_reading, 1)
+            if km > 0 and nxt.fuel_quantity > 0:
                 km_since_last = km
-                fuel_efficiency = round(km / log.fuel_quantity, 2)
+                fuel_efficiency = round(km / nxt.fuel_quantity, 2)
         base = FuelLogResponse.model_validate(log)
         enriched.append(base.model_copy(update={"km_since_last": km_since_last, "fuel_efficiency": fuel_efficiency}))
     return list(reversed(enriched))
